@@ -30,22 +30,38 @@ function formatTime(hours, minutes, seconds) {
 }
 
 // Function to calculate remaining hours
-function calculateRemainingHours(hours) {
-    const targetHour1 = 13; // 1 PM
-    const targetHour2 = 15; // 3 PM
+function calculateRemainingTime(hours, minutes) {
+    const targetHour = 23; // 11 PM
+    const targetMinute = 0; // 0 minute
     let remainingHours = 0;
-    if (hours < targetHour1) {
-        remainingHours = targetHour1 - hours;
-    } else if (hours < targetHour2) {
-        remainingHours = targetHour2 - hours;
+    let remainingMinutes = 0;
+
+    if (hours < targetHour || (hours === targetHour && minutes < targetMinute)) {
+        remainingHours = targetHour - hours;
+        remainingMinutes = targetMinute - minutes;
+        if (remainingMinutes < 0) {
+            remainingMinutes += 60;
+            remainingHours -= 1;
+        }
     }
-    return remainingHours;
+
+    return { hours: remainingHours, minutes: remainingMinutes };
 }
 
 // Function to check if current time is within the special range
 function isWithinRange(hours) {
     return (hours >= 13 && hours < 15);
 }
+
+// Add event listener to submit button
+submitBtn.addEventListener("click", function() {
+    const friendName = friendNameInput.value;
+    if (friendName) {
+        addFriendAndTime(friendName);
+        inputContainer.style.display = "none"; // Hide the input field and button
+        friendNameInput.value = ""; // Clear the input field
+    }
+});
 
 // Function to add a friend's name and display their system time
 function addFriendAndTime(friendName) {
@@ -54,14 +70,14 @@ function addFriendAndTime(friendName) {
     const minutes = currentTime.getMinutes();
     const seconds = currentTime.getSeconds();
     const formattedTime = formatTime(hours, minutes, seconds);
-    const remainingHours = calculateRemainingHours(hours);
+    const remainingTime = calculateRemainingTime(hours, minutes);
 
     // Write data to Firebase Realtime Database
     push(ref(database, 'friends'), {
         name: friendName,
         time: formattedTime,
         hours: hours,
-        remainingHours: remainingHours
+        remainingTime: remainingTime
     }, function(error) {
         if (error) {
             console.error("Error adding friend:", error);
@@ -79,7 +95,9 @@ function displayFriends() {
         snapshot.forEach(function(childSnapshot) {
             var friendData = childSnapshot.val();
             const listItem = document.createElement("li");
-            listItem.textContent = `${friendData.name}: ${friendData.time} (Remaining hours: ${friendData.remainingHours})`;
+            const remainingHours = friendData.remainingTime.hours;
+            const remainingMinutes = friendData.remainingTime.minutes;
+            listItem.textContent = `${friendData.name}: ${friendData.time} (Remaining time: ${remainingHours} hours ${remainingMinutes} minutes)`;
             if (isWithinRange(friendData.hours)) {
                 listItem.classList.add("highlight");
             }
@@ -90,19 +108,37 @@ function displayFriends() {
     });
 }
 
+// Get references to HTML elements
+const inputContainer = document.getElementById("inputContainer");
+const friendNameInput = document.getElementById("friendNameInput");
+const submitBtn = document.getElementById("submitBtn");
+const friendList = document.getElementById("friendList");
+
+// Check if the user has already submitted their name
+const isNameSubmitted = localStorage.getItem('isNameSubmitted');
+
+// Hide the input field and submit button if name is already submitted
+if (isNameSubmitted) {
+    inputContainer.style.display = 'none';
+}
+
 // Add event listener to submit button
-submitBtn.addEventListener("click", function() {
-    const friendName = friendNameInput.value;
-    if (friendName) {
-        addFriendAndTime(friendName);
-        inputContainer.style.display = "none"; // Hide the input field and button
+submitBtn.addEventListener('click', function() {
+    // Check if name is not already submitted
+    if (!isNameSubmitted) {
+        const friendName = friendNameInput.value;
+        if (friendName) {
+            addFriendAndTime(friendName);
+            inputContainer.style.display = 'none'; // Hide the input field and button
+            // Set flag indicating name submission
+            localStorage.setItem('isNameSubmitted', true);
+        }
     }
 });
+
 
 // Initially display all friends
 displayFriends();
 
-// Update the displayed times every second
-setInterval(() => {
-    displayFriends();
-}, 1000);
+// Update the displayed times every 5 seconds
+setInterval(displayFriends, 5000);
