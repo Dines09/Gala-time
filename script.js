@@ -108,11 +108,6 @@ function displayFriends() {
     });
 }
 
-// Get references to HTML elements
-const inputContainer = document.getElementById("inputContainer");
-const friendNameInput = document.getElementById("friendNameInput");
-const submitBtn = document.getElementById("submitBtn");
-const friendList = document.getElementById("friendList");
 
 // Check if the user has already submitted their name
 const isNameSubmitted = localStorage.getItem('isNameSubmitted');
